@@ -15,7 +15,7 @@
     </style>
 
     <style name="ThemeOverlay.RingsOfTime.AppWidgetContainer" parent="">
-        <item name="appWidgetBackgroundColor">@color/green</item>
+        <item name="appWidgetBackgroundColor">@color/transparent</item>
         <item name="appWidgetTextColor">@color/light_blue_50</item>
     </style>
 </resources>
