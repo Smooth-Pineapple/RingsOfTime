@@ -3,5 +3,5 @@
     <string name="bitmap_width">300</string>
     <string name="bitmap_height">300</string>
     <string name="brush_thickness">6</string>
-    <string name="smoothness">1200</string>
+    <string name="smoothness">600</string>
 </resources>
