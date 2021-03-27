@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 
 
 /**
@@ -31,7 +32,7 @@ public class RingsOfTimeWidget extends AppWidgetProvider {
     private static Float _brushThickness = null;
     private static Float _xCenter = null;
     private static Float _yCenter = null;
-    private static Float _radius = null;
+    private static Float _outerRadius = null;
     private static Float _smoothness = null;
 
     private static Boolean _haveInit = false;
@@ -51,9 +52,6 @@ public class RingsOfTimeWidget extends AppWidgetProvider {
         Bitmap bitmap = Bitmap.createBitmap(_bitmapWidth.intValue(), _bitmapHeight.intValue(), Bitmap.Config.ARGB_8888);
 
         Canvas canvas = new Canvas(bitmap);
-        Paint paint = new Paint();
-
-        paint.setStrokeWidth(_brushThickness);
 
         /*
         Radians = Take the radius (Line from center to edge of circle) and wrap it around the edge of the circle. The angle this little pizza makes is the "Radian"
@@ -61,45 +59,33 @@ public class RingsOfTimeWidget extends AppWidgetProvider {
         We use 'smoothness' to define how many points will be draw to make this circumference.
         */
         Float segment = 2 * (float)Math.PI / _smoothness;
-
         Float totalSegments = (float) ((2 * Math.PI)/ segment);
-        Float totalColourSegments = (255f/ totalSegments) * 6;
 
+        Float totalColourSegments = (255f/ totalSegments) * 6; //Want around 6 fades
         List<Float> rgb = new ArrayList<>(3);
         rgb.add(255f);
         rgb.add(0f);
         rgb.add(0f);
 
-        //Now that the circle has been split into segments, draw them!
-        for(float angle = 0f;  angle < 2 * Math.PI;  angle += segment) {
-            transitionStepRGB(rgb, totalColourSegments);
-            paint.setColor(Color.rgb(Math.round(rgb.get(0)), Math.round(rgb.get(1)), Math.round(rgb.get(2))));
+        //Draw outer ring
+        Paint outerBrush = new Paint();
+        outerBrush.setStrokeWidth(_brushThickness);
+        drawCircle(canvas, outerBrush, rgb, _outerRadius, segment, totalColourSegments);
 
-            /*
-            We must "flatten" the pizza to do go from angles to x, y positions:
+        //Draw inner rings in a loop
+        for(int i = 0; i < 12; i++) {
+            Paint innerBrush = new Paint();
+            innerBrush.setStrokeWidth(_brushThickness / 2);
 
-                                                     This point is hitting the circumference
-                                                       /|
-                                                     /  | y
-            This point is hitting center of circle /____|
-                                                     x
+            Random r = new Random();
 
-            Adjacent = Line next to angle, here the angle is happening next to the center!
-            Opposite = Line not touching angle
-            Hypotenuse = Long one
+            rgb.set(0, 0f + r.nextFloat() * (255f - 0f));
+            rgb.set(1, 0f + r.nextFloat() * (255f - 0f));
+            rgb.set(2, 0f + r.nextFloat() * (255f - 0f));
 
-            Cosine = Gives us 'x' as it's the Adjacent/ Hypotenuse
-            Sine = Gives us 'y' as it's Opposite/ Hypotenuse
-
-            Then, as we have our angle, we just need to get the coordinates in relation to x/y and the radius
-            */
-            float x = (float) (_xCenter + _radius * Math.cos(angle));
-            float y = (float) (_yCenter + _radius * Math.sin(angle));
-
-            //Draw to the canvas...
-            canvas.drawPoint(x, y, paint);
+            Float innerRadius = i * (_outerRadius / 12);
+            drawCircle(canvas, innerBrush, rgb, innerRadius, segment, null);
         }
-
         //... Then display this painted canvas
         views.setImageViewBitmap(R.id.outer_ring_id, bitmap);
 
@@ -144,12 +130,46 @@ public class RingsOfTimeWidget extends AppWidgetProvider {
             _xCenter = _bitmapWidth / 2f;
             _yCenter = _bitmapHeight / 2f;
 
-            _radius = _xCenter - _brushThickness - 1; //Account for brush thickness
+            _outerRadius = _xCenter - _brushThickness - 1; //Account for brush thickness
 
             return true;
         } catch (Resources.NotFoundException e) {
             Log.e("RoT init exception", e.getMessage());
             return false;
+        }
+    }
+
+    private static void drawCircle(Canvas canvas, Paint brush, List<Float> rgb, Float radius, Float segment, Float totalColourSegments) {
+        //Now that the circle has been split into segments, draw them!
+        for(float angle = 0f;  angle < 2 * Math.PI;  angle += segment) {
+            if(totalColourSegments != null)
+                transitionStepRGB(rgb, totalColourSegments);
+
+            brush.setColor(Color.rgb(Math.round(rgb.get(0)), Math.round(rgb.get(1)), Math.round(rgb.get(2))));
+
+            /*
+            We must "flatten" the pizza to do go from angles to x, y positions:
+
+                                                     This point is hitting the circumference
+                                                       /|
+                                                     /  | y
+            This point is hitting center of circle /____|
+                                                     x
+
+            Adjacent = Line next to angle, here the angle is happening next to the center!
+            Opposite = Line not touching angle
+            Hypotenuse = Long one
+
+            Cosine = Gives us 'x' as it's the Adjacent/ Hypotenuse
+            Sine = Gives us 'y' as it's Opposite/ Hypotenuse
+
+            Then, as we have our angle, we just need to get the coordinates in relation to x/y and the radius
+            */
+            float x = (float) (_xCenter + radius * Math.cos(angle));
+            float y = (float) (_yCenter + radius * Math.sin(angle));
+
+            //Draw to the canvas...
+            canvas.drawPoint(x, y, brush);
         }
     }
 
