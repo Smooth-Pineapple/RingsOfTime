@@ -72,7 +72,7 @@ public class RingsOfTimeWidget extends AppWidgetProvider {
 
         //Now that the circle has been split into segments, draw them!
         for(float angle = 0f;  angle < 2 * Math.PI;  angle += segment) {
-            transistionStepRGB(rgb, totalColourSegments);
+            transitionStepRGB(rgb, totalColourSegments);
             paint.setColor(Color.rgb(Math.round(rgb.get(0)), Math.round(rgb.get(1)), Math.round(rgb.get(2))));
 
             /*
@@ -156,7 +156,7 @@ public class RingsOfTimeWidget extends AppWidgetProvider {
     /*
     When called in a loop this will transition across RGB like a slider on a colour chooser
     */
-    private static void transistionStepRGB(List<Float> rgb, Float totalColourSegments) {
+    private static void transitionStepRGB(List<Float> rgb, Float totalColourSegments) {
         for(int col = 0; col < 3; col++) {
             int next = col + 1;
             int prev = col - 1;
