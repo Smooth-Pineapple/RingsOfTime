@@ -7,6 +7,7 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.os.Build;
 import android.util.Log;
@@ -37,6 +38,9 @@ public class RingsOfTimeWidget extends AppWidgetProvider {
 
     private static Boolean _haveInit = false;
 
+    private static int _hours;
+    private static int _minutes;
+
     static void updateAppWidget(Context context, AppWidgetManager appWidgetManager,
                                 int appWidgetId) {
         Log.i("GOLI", "UPDATE");
@@ -59,9 +63,11 @@ public class RingsOfTimeWidget extends AppWidgetProvider {
         We use 'smoothness' to define how many points will be draw to make this circumference.
         */
         Float segment = 2 * (float)Math.PI / _smoothness;
-        Float totalSegments = (float) ((2 * Math.PI)/ segment);
+        Float minuteAsSegment = (float) ((2 * Math.PI) / 60); //How many segments in the outer ring make 1 minute
+        Float minutesAsSegment = minuteAsSegment * _minutes;
 
-        Float totalColourSegments = (255f/ totalSegments) * 6; //Want around 6 fades
+
+        Float colourSegments = (255f/ _smoothness) * 6; //Want around 6 fades over all the points
         List<Float> rgb = new ArrayList<>(3);
         rgb.add(255f);
         rgb.add(0f);
@@ -70,24 +76,32 @@ public class RingsOfTimeWidget extends AppWidgetProvider {
         //Draw outer ring
         Paint outerBrush = new Paint();
         outerBrush.setStrokeWidth(_brushThickness);
-        drawCircle(canvas, outerBrush, rgb, _outerRadius, segment, totalColourSegments);
+        drawCircle(canvas, outerBrush, rgb, _outerRadius, minutesAsSegment, segment, colourSegments);
+
+        rgb.set(0, 255f);
+        rgb.set(1, 0f);
+        rgb.set(2, 0f);
 
         //Draw inner rings in a loop
-        for(int i = 0; i < 12; i++) {
+        for(int i = 0; i < _hours; i++) {
             Paint innerBrush = new Paint();
             innerBrush.setStrokeWidth(_brushThickness / 2);
 
             Random r = new Random();
-
-            rgb.set(0, 0f + r.nextFloat() * (255f - 0f));
-            rgb.set(1, 0f + r.nextFloat() * (255f - 0f));
-            rgb.set(2, 0f + r.nextFloat() * (255f - 0f));
+            transitionStepRGB(rgb, 255f/ 2);//Want to do a half fade between rings
+            //Log.i("GOLI", "R: " + String.valueOf(rgb.get(0)) + ", G: " + String.valueOf(rgb.get(1)) + ", B: " + String.valueOf(rgb.get(2)));
 
             Float innerRadius = i * (_outerRadius / 12);
-            drawCircle(canvas, innerBrush, rgb, innerRadius, segment, null);
+            drawCircle(canvas, innerBrush, rgb, innerRadius, minuteAsSegment * 60, segment, null);
         }
+
+        //Rotate as my calculations start horizontally
+        Matrix matrix = new Matrix();
+        matrix.postRotate(-90);
+        Bitmap rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+
         //... Then display this painted canvas
-        views.setImageViewBitmap(R.id.outer_ring_id, bitmap);
+        views.setImageViewBitmap(R.id.outer_ring_id, rotatedBitmap);
 
         // Instruct the widget manager to update the widget
         appWidgetManager.updateAppWidget(appWidgetId, views);
@@ -95,16 +109,17 @@ public class RingsOfTimeWidget extends AppWidgetProvider {
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
+        Calendar currentTime = Calendar.getInstance();
+        this._hours = currentTime.get(Calendar.HOUR) + 1; //Want a little  dot in the middle to represent that the widget is there!
+        this._minutes = currentTime.get(Calendar.MINUTE);
+
+        Log.i("GOLI time", String.valueOf(_hours));
+        Log.i("GOLI time", String.valueOf(_minutes));
+
         // There may be multiple widgets active, so update all of them
         for (int appWidgetId : appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId);
         }
-
-        Date currentTime = Calendar.getInstance().getTime();
-        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
-        String time = timeFormat.format(currentTime);
-
-        Log.i("GOLI time", time);
     }
 
     @Override
@@ -139,9 +154,9 @@ public class RingsOfTimeWidget extends AppWidgetProvider {
         }
     }
 
-    private static void drawCircle(Canvas canvas, Paint brush, List<Float> rgb, Float radius, Float segment, Float totalColourSegments) {
+    private static void drawCircle(Canvas canvas, Paint brush, List<Float> rgb, Float radius, Float totalCircumference,  Float segment, Float totalColourSegments) {
         //Now that the circle has been split into segments, draw them!
-        for(float angle = 0f;  angle < 2 * Math.PI;  angle += segment) {
+        for(float angle = 0f;  angle < totalCircumference;  angle += segment) {
             if(totalColourSegments != null)
                 transitionStepRGB(rgb, totalColourSegments);
 
